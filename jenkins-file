@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'SPRING_PROFILE', defaultValue: 'dev', description: 'Spring profile')
+        string(name: 'GITHUB_REPO', defaultValue: 'your-github-repo', description: 'GitHub repository URL')
+        string(name: 'GITHUB_BRANCH', defaultValue: 'master', description: 'GitHub branch')
+    }
+
+    environment {
+        ECR_REGISTRY = 'your-ecr-registry-url'
+        ECR_REPO_NAME = 'your-ecr-repo-name'
+        DOCKER_IMAGE_NAME = 'springboot-app'
+        AWS_DEFAULT_REGION = 'your-aws-region'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout from GitHub repository with parameters
+                checkout([$class: 'GitSCM', 
+                          branches: [[name: "*/${params.GITHUB_BRANCH}"]], 
+                          doGenerateSubmoduleConfigurations: false, 
+                          extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: '']], 
+                          submoduleCfg: [], 
+                          userRemoteConfigs: [[url: "${params.GITHUB_REPO}.git"]]])
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Build the Spring Boot application with Gradle
+                script {
+                    sh "./gradlew clean build -PspringProfiles=${params.SPRING_PROFILE}"
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build a Docker image
+                script {
+                    docker.build("${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}")
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                // Authenticate with ECR
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'your-aws-credentials-id', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+                    }
+                }
+
+                // Push the Docker image to ECR
+                script {
+                    docker.withRegistry("${ECR_REGISTRY}", 'ecr') {
+                        dockerImage.push("${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}")
+                        dockerImage.push("${DOCKER_IMAGE_NAME}:latest")
+                    }
+                }
+            }
+        }
+    }
+}

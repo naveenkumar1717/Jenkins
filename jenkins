@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'gitUrl')
+        string(name: 'gitBranch')
+    }
+    stages {
+        stage('Scm checkout') {
+            steps {
+             script{
+                echo "git checkout"
+                def gitUrl = params.gitUrl
+                def gitBranch = params.gitBranch
+                checkout scmGit(branches: [[name: '${gitBranch}']],
+                userRemoteConfigs: [
+                    [ credentialsId: 'my-git-credentials', url: '${gitUrl}' ]
+                ])
+             }
+                
+            }
+        }
+        stage ('Build'){
+            steps{
+                script{
+                    ./gradle clean build
+                }
+            }
+        }
+    }
+}      
+       /* stage('Example Deploy') {
+            when {
+                expression { BRANCH_NAME ==~ /(production|staging)/ }
+                anyOf {
+                    environment name: 'DEPLOY_TO', value: 'production'
+                    environment name: 'DEPLOY_TO', value: 'staging'
+                }
+            }
+            steps {
+                echo 'Deploying'
+            }
+        }
+    } /*

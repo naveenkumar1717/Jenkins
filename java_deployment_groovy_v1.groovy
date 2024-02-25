@@ -36,7 +36,7 @@ pipeline {
             steps {
                 script {
                    withCredentials([string(credentialsId: 'sonar', variable: 'TOKEN')]) {
-                    def IP = sh(script: "curl http://169.254.169.254/latest/meta-data/local-ipv4", returnStdout: true).trim()
+                    //def IP = sh(script: "curl http://169.254.169.254/latest/meta-data/local-ipv4", returnStdout: true).trim()
                     sh """
                        docker run --rm \
                        -e SONAR_HOST_URL=http://localhost:9000/ \

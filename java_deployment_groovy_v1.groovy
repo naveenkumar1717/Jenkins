@@ -35,18 +35,13 @@ pipeline {
         stage('Code Analysis') {
             steps {
                 script {
-                   withCredentials([string(credentialsId: 'sonar', variable: 'TOKEN')]) {
-                    //def IP = sh(script: "curl http://169.254.169.254/latest/meta-data/local-ipv4", returnStdout: true).trim()
-                    sh """
-                       docker run --rm \
-                       -e SONAR_HOST_URL=http://localhost:9000/ \
-                       -e SONAR_LOGIN=$TOKEN \
-                       -v ${WORKSPACE}:/usr/src \
-                       -v ${WORKSPACE}:/project \
-                       sonarsource/sonar-scanner-cli \
-                       -Dsonar.projectBaseDir=/project
-                    """
-                   }
+                    withCredentials([string(credentialsId: 'sonar', variable: 'TOKEN')]) {
+                    def IP = sh(script: "curl http://169.254.169.254/latest/meta-data/local-ipv4", returnStdout: true).trim()
+                    sh "docker run --rm -e SONAR_HOST_URL=http:$IP:9000 -v ${WORKSPACE}:/usr/src -v ${WORKSPACE}:/project sonarsource/sonar-scanner-cli -Dsonar.projectBaseDir=/project -Dsonar.login=$TOKEN -Dsonar.java.binaries=build/classes"
+                    // Stop and remove SonarQube container
+                    //sh "docker stop $containerId && docker rm $containerId"
+  }
+                   
                 }
             }
         }
